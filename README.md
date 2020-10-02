@@ -32,6 +32,9 @@ Reverse engineering the apk:
 Reverse engineering libQRCronto.so:
 <add Ghidra results>
 
+Maybe consider using Frida to trace function calls:
+https://frida.re/docs/android/
+
 Links:
 https://www.bignox.com/ - Download Nox
 https://portswigger.net/burp/communitydownload - Download BurpSuite
