@@ -1,5 +1,5 @@
 # Square-Enix-Software-Token-OTP
-Findings when looking into the Square Enix Software Token.
+Findings when looking into the Square Enix Software Token: https://play.google.com/store/apps/details?id=com.square_enix_software_token
 
 tl;dr: The Square Enix Software Token uses it's own proprietary method to generate OTP codes, and can't be added to existing apps like Google Authenticator. It uses Vasco (now OneSpan) DIGIPASS for Mobile (https://www.onespan.com/products/mobile-authentication / https://www.authstrong.com/DIGIPASS-Mobile-Enterprise-Security.asp), which is similar to RSA SecurID, and NOT the OTP standard.
 It may be possible to reverse the process by which it generates OTP codes (like with the Steam OTP codes), but then we may as well use the app.
@@ -314,6 +314,10 @@ https://frida.re/docs/android/
 I may also try to use GHIDA again (though I couldn't understand assembly).
 
 It's been strongly recommended to look at the decompiled smali code instead of using a compiler to Java, because you have to fix Java classes and libraries yourself, and with the obfuscated code it becomes too much.
+
+Searching for libQRCronto.so you're able to find other apps using the same framework, so that could be interesting to compare against. Only one app still seems to be using this framework, the others (at least from the screenshots) appear to have moved to something else.
+
+https://play.google.com/store/apps/details?id=com.eTokenBCR
 
 <br>
 
