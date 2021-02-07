@@ -8,6 +8,8 @@ It may be possible to reverse the process by which it generates OTP codes (like 
 
 Process for adding the software OTP:
 <add steps>
+    
+Note: Square Enix will e-mail you a code to put into the app (maybe one of the values in the network capture?). This code only lasts for one hour, and a new one can only be generated every 24 hours.
 
 ## Notes:
 1. The token is stored in /data/data/com.square_enix_software_token/files/VDS_dfms4142
