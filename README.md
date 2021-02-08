@@ -329,7 +329,14 @@ I've dumped the memory using GameGuardian (https://gameguardian.net/download), a
 
 The logcat logs don't show anything useful. The output doesn't change when generating the OTP. This should be used once some print statements are added to the code, helped by using jadx-gui.
 
+Helpful Nox commands for adb (drops you into a root shell):
+```
+cd "C:\Program Files (x86)\Nox\bin"
+nox_adb.exe connect 127.0.0.1:62001
+nox_adb.exe -s 127.0.0.1:62001 shell
+```
 
+<br>
 
 ##  Next steps
 
@@ -345,6 +352,7 @@ It's been strongly recommended to look at the decompiled smali code instead of u
 Searching for libQRCronto.so you're able to find other apps using the same framework, so that could be interesting to compare against. Only one app still seems to be using this framework, the others (at least from the screenshots) appear to have moved to something else.
 
 https://play.google.com/store/apps/details?id=com.eTokenBCR
+
 
 <br>
 
