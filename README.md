@@ -32,6 +32,7 @@ Note: Square Enix will e-mail you a code to put into the app (this isn't one of 
 1. None of the strings below work as an OTP seed, because they contain illegal characters (e.g. "1").
 1. Only the initial registration needs to be done online. Generating codes can be done offline.
 
+I feel like the trick to understanding this will be in either understanding the "VDS_dfms4142" file (you can search for "dfms" in jadx-gui to get some starting points), or to find the method that's called when running the OTP generation button, and following the code from there. The latter is the best bet, and where I'll focus on next.
 <br>
 <br>
 
