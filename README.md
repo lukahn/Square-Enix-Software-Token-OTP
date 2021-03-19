@@ -18,7 +18,7 @@ Note: Square Enix will e-mail you a code to put into the app (this isn't one of 
     1. The token in this file changes each time the "Show One-Time_Password" button is pressed.
     1. Deleting this token when the app is closed means that the registration process needs to be restarted from the EULA stage.
     1. Deleting this token when the app is running causes a new file to be written when the button is pressed.
-    1. The initial value in the token is different and shorter on fresh installations (before the EULA is accepted) - 228 characters, same format with preceeding "0004" and character range.
+    1. The initial value in the token is different and shorter on fresh installations (before the EULA is accepted) - 228 or 290 characters, same format with preceeding "0004" and character range.
     1. There is a delay of a few seconds when pressing the button as a big calculation occurs (fan spins up).
 1. The token is generated using the libQRCronto.so library.
     1. /data/app/com.square_enix_software_token-1/lib/arm/libQRCronto.so
@@ -33,6 +33,44 @@ Note: Square Enix will e-mail you a code to put into the app (this isn't one of 
 1. Only the initial registration needs to be done online. Generating codes can be done offline.
 
 I feel like the trick to understanding this will be in either understanding the "VDS_dfms4142" file (you can search for "dfms" in jadx-gui to get some starting points), or to find the method that's called when running the OTP generation button, and following the code from there. The latter is the best bet, and where I'll focus on next.
+<br>
+<br>
+
+## New (or modified) Files:
+Below are a list of files in `/data/data/com.square_enix_software_token/` that are changed or modified during each step. It appears that only the file VDS_dfms4142 changes, and none of the data in the network capture (nonce, xfad, etc) appears in any of these files.
+
+### Fresh install:
+```
+/lib/libQRCronto.so (new)
+```
+### After launch:
+```
+/cache/WebView/Crashpad/settings.dat (new)
+/cache/org.chromium.android_webview/Code Cache/js/index (new)
+/cache/org.chromium.android_webview/Code Cache/js/index-dir/the-real-index (new)
+/files/VDS_dfms4142 (new)
+/shared_prefs/OneSpan_DeviceBinding.xml (new)
+/shared_prefs/WebViewChromiumPrefs.xml (new)
+/app_webview/variations_seed_new (new)
+/app_webview/variations_stamp (new) (empty)
+/app_webview/webview_data.lock (new) (empty)
+/app_webview/metrics_guid (new)
+/app_webview/Web Data (new)
+/app_webview/Web Data-journal (new) (empty)
+/app_webview/pref_store (new)
+```
+### After registration:
+```
+/files/VDS_dfms4142 (changed)
+```
+### After generating code:
+```
+/files/VDS_dfms4142 (changed)
+```
+### After generating code again:
+```
+/files/VDS_dfms4142 (changed)
+```
 <br>
 <br>
 
@@ -322,8 +360,11 @@ The process closes whenever it's minimised, so you need to run an adb shell to g
 
 #### Memory dump
 
-I've dumped the memory using GameGuardian (https://gameguardian.net/download), and tried using https://github.com/makomk/aeskeyfind to find the (AES?) keys, but nothing appears. I'm not even able to see the OTP value in live memory.
+I've dumped the memory using GameGuardian (https://gameguardian.net/download), and tried using https://github.com/makomk/aeskeyfind to find the (AES?) keys, but nothing appears. I'm not even able to see the OTP value in live memory. The memory is where the de-obfuscated code would live, so it'd be worthwhile investigating this area more.
 
+In memory, there's a value called instance0rId§<username> (or "i�n�s�t�a�n�c�e�0�r�I�d�§�x�" (where x is the username)) (for me, at 0x000AFA30)
+```
+```
 <br>
 
 #### logcat
