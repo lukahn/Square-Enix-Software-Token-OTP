@@ -1,7 +1,7 @@
 # Square-Enix-Software-Token-OTP
 Findings when looking into the Square Enix Software Token: https://play.google.com/store/apps/details?id=com.square_enix_software_token
 
-Ultimately, it's my goal to find out how the OTP codes are being generated, and then writing that functionality into BitWarden, similar to Steam (https://github.com/bitwarden/mobile/blob/master/src/Core/Services/TotpService.cs). As with the Steam service, I'm too not interested in how the key is generated, only where to find it and how to use it.
+Ultimately, it's my goal to find out how the OTP codes are being generated, and then writing that functionality into BitWarden, similar to Steam (https://github.com/bitwarden/mobile/blob/master/src/Core/Services/TotpService.cs). As with the Steam service, I'm not too interested in how the key is generated, only where to find it and how to use it.
 
 tl;dr: The Square Enix Software Token uses it's own proprietary method to generate OTP codes, and can't be added to existing apps like Google Authenticator. It uses Vasco (now OneSpan) DIGIPASS for Mobile (https://www.onespan.com/products/mobile-authentication / https://www.authstrong.com/DIGIPASS-Mobile-Enterprise-Security.asp), which is similar to RSA SecurID, and NOT the OTP standard.
 It may be possible to reverse the process by which it generates OTP codes (like with the Steam OTP codes), but then we may as well use the app.
@@ -13,21 +13,21 @@ Note: Square Enix will e-mail you a code to put into the app (this isn't one of 
 
 ## Notes:
 1. The token is stored in /data/data/com.square_enix_software_token/files/VDS_dfms4142
-1. The token always starts with "0004", but has a length of 1960 characters.
+1. The token always starts with "0004", and has a length of 1960 characters.
 1. The token is in uppercase hex.
-    1. The token in this file changes each time the "Show One-Time_Password" button is pressed.
+    1. The token in this file changes each time the "Show One-Time Password" button is pressed.
     1. Deleting this token when the app is closed means that the registration process needs to be restarted from the EULA stage.
-    1. Deleting this token when the app is running causes a new file to be written when the button is pressed.
-    1. The initial value in the token is different and shorter on fresh installations (before the EULA is accepted) - 228 or 290 characters, same format with preceeding "0004" and character range.
+    1. Deleting this token when the app is running causes a new file to be written when the button is pressed, as the data is already in memory.
+    1. The initial value in the token is different and shorter on fresh installations (before the EULA is accepted) - 228 or 290 characters, same format with the preceeding "0004" and character range.
     1. There is a delay of a few seconds when pressing the button as a big calculation occurs (fan spins up).
-1. The token is generated using the libQRCronto.so library.
+1. The token may be generated using the libQRCronto.so library (need to test, this library could just be for unused QR code functionality).
     1. /data/app/com.square_enix_software_token-1/lib/arm/libQRCronto.so
         1. This may just be "com.square_enix_software_token" on some devices.
 1. The OTP is valid for 30 seconds (old phone) or 60 seconds (Nox).
     1.  On older devices, only one code can be generated every 30 seconds, even if you go back and forth.
     1.  On newer devices, a new code is generated each time the "Show One-Time Password" button is clicked, and lasts for 60 seconds.
     1.  Note: This needs looking into. Sometimes going out and in of the token screen returns the same code, sometimes it changes. I think it's 30 seconds, synchronised to the server (it changed at xx:xx:58)
-1. Uses either sha256 (vdsSHA256Initial_hash_value) or sha512 (vdsSHA512Initial_hash_value) (from GHIDRA)
+1. Possibly lses either sha256 (vdsSHA256Initial_hash_value) or sha512 (vdsSHA512Initial_hash_value) (from GHIDRA)
 1. Related to VASCO DIGIPASS for Mobile (http://www.authstrong.com/DIGIPASS-Mobile.asp).
 1. None of the strings below work as an OTP seed, because they contain illegal characters (e.g. "1").
 1. Only the initial registration needs to be done online. Generating codes can be done offline.
@@ -362,7 +362,7 @@ The process closes whenever it's minimised, so you need to run an adb shell to g
 
 I've dumped the memory using GameGuardian (https://gameguardian.net/download), and tried using https://github.com/makomk/aeskeyfind to find the (AES?) keys, but nothing appears. I'm not even able to see the OTP value in live memory. The memory is where the de-obfuscated code would live, so it'd be worthwhile investigating this area more.
 
-In memory, there's a value called instance0rId§<username> (or "i�n�s�t�a�n�c�e�0�r�I�d�§�x�" (where x is the username)) (for me, at 0x000AFA30)
+In memory, there's a value called instance0rId§<username> (or "i�n�s�t�a�n�c�e�0�r�I�d�§that (where x is the username)) (for me, at 0x000AFA30). Most strings (though not all) are obfuscated in memory by the addition of a hex 00 character (�) between each character. Using a hex editor (e.g. HxD), copying the text, then removing all instances of this character, and then running the Linux command `strings` on it shows some very interesting information, such as the Square Enix URL (previously completely obfuscated), the username, and the device ID. It also shows a list of cipher suites, error messages, and some long strings that may/may not be the OTP secret. The OTP code itself still isn't present 
 ```
 ```
 <br>
@@ -395,7 +395,7 @@ Searching for libQRCronto.so you're able to find other apps using the same frame
 
 https://play.google.com/store/apps/details?id=com.eTokenBCR
 
-
+It may also be useful to look for older versions of the app. The one in the example usage screenshots on the Square Enix website show a version back to 2013.
 <br>
 
 ## Links:
