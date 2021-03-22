@@ -1,13 +1,15 @@
 # Square-Enix-Software-Token-OTP
 Findings when looking into the Square Enix Software Token: https://play.google.com/store/apps/details?id=com.square_enix_software_token
 
-Ultimately, it's my goal to find out how the OTP codes are being generated, and then writing that functionality into BitWarden, similar to Steam (https://github.com/bitwarden/mobile/blob/master/src/Core/Services/TotpService.cs). As with the Steam service, I'm not too interested in how the key is generated, only where to find it and how to use it.
+Ultimately, it's my goal to find out how the OTP codes are being generated, and then writing that functionality into BitWarden, similar to Steam (https://bitwarden.com/help/article/authenticator-keys/ / https://github.com/bitwarden/mobile/blob/master/src/Core/Services/TotpService.cs). As with the Steam service, I'm not too interested in how the key is generated, only where to find it and how to use it.
 
 tl;dr: The Square Enix Software Token uses it's own proprietary method to generate OTP codes, and can't be added to existing apps like Google Authenticator. It uses Vasco (now OneSpan) DIGIPASS for Mobile (https://www.onespan.com/products/mobile-authentication / https://www.authstrong.com/DIGIPASS-Mobile-Enterprise-Security.asp), which is similar to RSA SecurID, and NOT the OTP standard.
 It may be possible to reverse the process by which it generates OTP codes (like with the Steam OTP codes), but then we may as well use the app.
 
 Process for adding the software OTP:
 <add steps>
+
+For the purposes of easy testing, I'm using Nox, so any device IDs or model names will be related to this.
     
 Note: Square Enix will e-mail you a code to put into the app (this isn't one of the values in the network capture). This code only lasts for one hour, and a new one can only be generated once every 24 hours.
 
@@ -362,10 +364,811 @@ The process closes whenever it's minimised, so you need to run an adb shell to g
 
 I've dumped the memory using GameGuardian (https://gameguardian.net/download), and tried using https://github.com/makomk/aeskeyfind to find the (AES?) keys, but nothing appears. I'm not even able to see the OTP value in live memory. The memory is where the de-obfuscated code would live, so it'd be worthwhile investigating this area more.
 
+
 In memory, there's a value called instance0rId§<username> (or "i�n�s�t�a�n�c�e�0�r�I�d�§that (where x is the username)) (for me, at 0x000AFA30). Most strings (though not all) are obfuscated in memory by the addition of a hex 00 character (�) between each character. Using a hex editor (e.g. HxD), copying the text, then removing all instances of this character, and then running the Linux command `strings` on it shows some very interesting information, such as the Square Enix URL (previously completely obfuscated), the username, and the device ID. It also shows a list of cipher suites, error messages, and some long strings that may/may not be the OTP secret. The OTP code itself still isn't present 
-```
-```
+
 <br>
+
+When searching for my DeviceID (which is referred to as `instance0name`), I get the following (plus some long data strings I've removed, possibly the encrypted key):
+
+```
+instance0initialized§true
+instance0tds§LATER
+instance0pwdFrmt§1
+instance0biometricUsed§false
+eula§true
+instance0rId§<sqexid>
+v§5
+ts§0
+instance0fingerprintVersion§6
+instance0name§<deviceId>
+AlgorithmParameters.1.2.840.113549.1.12.1.3
+AlgorithmParameters.1.2.840.113549.1.12.1.4
+```
+
+Of note here is: `AlgorithmParameters.1.2.840.113549.1.12.1.3` and `AlgorithmParameters.1.2.840.113549.1.12.1.4`, which appears to be `pbeWithSHAAnd3-KeyTripleDES-CBC1` and `pbeWithSHAAnd2-KeyTripleDES-CBC` (from https://github.com/caesay/Asn1Editor/blob/master/Asn1Editor/OID.txt)
+```
+1.2.840.113549.1.12.1.3, pbeWithSHAAnd3-KeyTripleDES-CBC
+1.2.840.113549.1.12.1.4, pbeWithSHAAnd2-KeyTripleDES-CBC
+```
+
+This thread looks like it has an example to decrypt the data: https://stackoverflow.com/questions/34261024/encrypted-private-key-in-java-java-security-invalidkeyexception
+
+Another result from the search shows mention of `SHA-512/224`. From (https://webcache.googleusercontent.com/search?q=cache:GqZxQ_jbc5MJ:sbsit.sa/dpf-removal-fu9hj/password-generator-algorithm-examples.html),  `SHA-2 is a set of 6 hashing algorithm (SHA-256, SHA-512, SHA-224, SHA-384, SHA-512/224, SHA-512/256)`, so we might need to specify this when creating the otp link. E.g. otpauth://totp/websiteName?secret=ABC123&algorithm=SHA512
+
+In order to test whether we have the right key/algorithm, I've put all of the best looking codes into bash-totp (https://github.com/jakwings/bash-totp), so I can generate them all at once and compare it to the real answer.
+
+Here's a list of interesting strings from the memory dump. The Square Enix URL is found here (it's obfuscated in the code), and there are some interesting error messages. I've removed most of the garbage text and some strings that look unique to my account (e.g. account name, device name, WiFi IP address).
+<details>
+  <summary>Interesting strings</summary>
+
+```
+  MP
+ !"#$&'*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQSTUVWXYZ[\]^_`abcdefghlmnopqrstuvwxyz{|}~
+% Square Enix ID (for which the registration password was acquired)h
+/data/media/0
+/data/misc/user/0
+/mnt/shell/emulated/0
+/storage/emulated/0
+0123456789ABCDEF8
+1.0p
+1.2.840.113549.1.1.1
+1.2.840.113549.1.1.10
+1.2.840.113549.1.1.11
+1.2.840.113549.1.1.12
+1.2.840.113549.1.1.13
+1.2.840.113549.1.1.14
+1.2.840.113549.1.1.15
+1.2.840.113549.1.1.16
+1.2.840.113549.1.1.2
+1.2.840.113549.1.1.3
+1.2.840.113549.1.1.4
+1.2.840.113549.1.1.5
+1.2.840.113549.1.1.6
+1.2.840.113549.1.1.7
+1.2.840.113549.1.1.8
+1.2.840.113549.1.1.9
+1.2.840.113549.1.12.1
+1.2.840.113549.1.12.1.1
+1.2.840.113549.1.12.1.2
+1.2.840.113549.1.12.1.3
+1.2.840.113549.1.12.1.4
+1.2.840.113549.1.12.1.5
+1.2.840.113549.1.12.10.1
+1.2.840.113549.1.12.10.1.1
+1.2.840.113549.1.12.10.1.2
+1.2.840.113549.1.12.10.1.3
+1.2.840.113549.1.12.10.1.4
+1.2.840.113549.1.12.10.1.5
+1.2.840.113549.1.12.10.1.6
+1.2.840.113549.1.3.1
+1.2.840.113549.1.5.1
+1.2.840.113549.1.5.10
+1.2.840.113549.1.5.11
+1.2.840.113549.1.5.12
+1.2.840.113549.1.5.13
+1.2.840.113549.1.5.3
+1.2.840.113549.1.5.4
+1.2.840.113549.1.5.6
+1.2.840.113549.1.9.1
+1.2.840.113549.1.9.13
+1.2.840.113549.1.9.14
+1.2.840.113549.1.9.15
+1.2.840.113549.1.9.15.1
+1.2.840.113549.1.9.15.2
+1.2.840.113549.1.9.15.3
+1.2.840.113549.1.9.16
+1.2.840.113549.1.9.16.1.2
+1.2.840.113549.1.9.16.1.23
+1.2.840.113549.1.9.16.1.31
+1.2.840.113549.1.9.16.1.4
+1.2.840.113549.1.9.16.1.9
+1.2.840.113549.1.9.16.2.1
+1.2.840.113549.1.9.16.2.10
+1.2.840.113549.1.9.16.2.11
+1.2.840.113549.1.9.16.2.12
+1.2.840.113549.1.9.16.2.14
+1.2.840.113549.1.9.16.2.15
+1.2.840.113549.1.9.16.2.16
+1.2.840.113549.1.9.16.2.17
+1.2.840.113549.1.9.16.2.18
+1.2.840.113549.1.9.16.2.19
+1.2.840.113549.1.9.16.2.20
+1.2.840.113549.1.9.16.2.21
+1.2.840.113549.1.9.16.2.22
+1.2.840.113549.1.9.16.2.23
+1.2.840.113549.1.9.16.2.24
+1.2.840.113549.1.9.16.2.25
+1.2.840.113549.1.9.16.2.26
+1.2.840.113549.1.9.16.2.27
+1.2.840.113549.1.9.16.2.37
+1.2.840.113549.1.9.16.2.38
+1.2.840.113549.1.9.16.2.4
+1.2.840.113549.1.9.16.2.40
+1.2.840.113549.1.9.16.2.43
+1.2.840.113549.1.9.16.2.47
+1.2.840.113549.1.9.16.2.5
+1.2.840.113549.1.9.16.2.54
+1.2.840.113549.1.9.16.2.7
+1.2.840.113549.1.9.16.3
+1.2.840.113549.1.9.16.3.10
+1.2.840.113549.1.9.16.3.14
+1.2.840.113549.1.9.16.3.5
+1.2.840.113549.1.9.16.3.9
+1.2.840.113549.1.9.16.6.1
+1.2.840.113549.1.9.16.6.2
+1.2.840.113549.1.9.16.6.3
+1.2.840.113549.1.9.16.6.4
+1.2.840.113549.1.9.16.6.5
+1.2.840.113549.1.9.16.6.6
+1.2.840.113549.1.9.2
+1.2.840.113549.1.9.20
+1.2.840.113549.1.9.21
+1.2.840.113549.1.9.22
+1.2.840.113549.1.9.22.2
+1.2.840.113549.1.9.23
+1.2.840.113549.1.9.23.1
+1.2.840.113549.1.9.3
+1.2.840.113549.1.9.4
+1.2.840.113549.1.9.5
+1.2.840.113549.1.9.52
+1.2.840.113549.1.9.6
+1.2.840.113549.1.9.7
+1.2.840.113549.1.9.8
+1.2.840.113549.1.9.9
+1.2.840.113549.2.10
+1.2.840.113549.2.11(
+1.2.840.113549.2.2
+1.2.840.113549.2.4
+1.2.840.113549.2.5
+1.2.840.113549.2.7
+1.2.840.113549.2.8
+1.2.840.113549.2.9
+1.2.840.113549.3.2
+1.2.840.113549.3.4
+1.2.840.113549.3.7
+1.3.36.3.2.1
+1.3.36.3.2.2
+1.3.36.3.2.3
+1.3.36.3.3.1
+1.3.36.3.3.1.2
+1.3.36.3.3.1.3
+1.3.36.3.3.1.4
+1.3.36.3.3.2
+1.3.36.3.3.2.1
+1.3.36.3.3.2.2
+1.3.36.3.3.2.8
+1.3.36.3.3.2.8.1.1
+1.3.36.3.3.2.8.1.1.1
+1.3.36.3.3.2.8.1.1.10
+1.3.36.3.3.2.8.1.1.11
+1.3.36.3.3.2.8.1.1.12
+1.3.36.3.3.2.8.1.1.13
+1.3.36.3.3.2.8.1.1.14
+1.3.36.3.3.2.8.1.1.2
+1.3.36.3.3.2.8.1.1.3
+1.3.36.3.3.2.8.1.1.4
+1.3.36.3.3.2.8.1.1.5
+1.3.36.3.3.2.8.1.1.6
+1.3.36.3.3.2.8.1.1.7
+1.3.36.3.3.2.8.1.1.8
+1.3.36.3.3.2.8.1.1.9
+1.3.36.3.3.2.8.18
+1.3.6.1.5.5.7.1
+1.3.6.1.5.5.7.48
+1.3.6.1.5.5.7.48.1
+1.3.6.1.5.5.7.48.2
+2.16.840.1.101.3.4.1
+2.16.840.1.101.3.4.1.1
+2.16.840.1.101.3.4.1.2
+2.16.840.1.101.3.4.1.21
+2.16.840.1.101.3.4.1.22
+2.16.840.1.101.3.4.1.23
+2.16.840.1.101.3.4.1.24
+2.16.840.1.101.3.4.1.25
+2.16.840.1.101.3.4.1.26
+2.16.840.1.101.3.4.1.27
+2.16.840.1.101.3.4.1.28
+2.16.840.1.101.3.4.1.3
+2.16.840.1.101.3.4.1.4
+2.16.840.1.101.3.4.1.41
+2.16.840.1.101.3.4.1.42
+2.16.840.1.101.3.4.1.43
+2.16.840.1.101.3.4.1.44
+2.16.840.1.101.3.4.1.45
+2.16.840.1.101.3.4.1.46
+2.16.840.1.101.3.4.1.47
+2.16.840.1.101.3.4.1.48
+2.16.840.1.101.3.4.1.5
+2.16.840.1.101.3.4.1.6
+2.16.840.1.101.3.4.1.7
+2.16.840.1.101.3.4.1.8
+2.16.840.1.101.3.4.2
+2.16.840.1.101.3.4.2.1
+2.16.840.1.101.3.4.2.10
+2.16.840.1.101.3.4.2.11
+2.16.840.1.101.3.4.2.12
+2.16.840.1.101.3.4.2.13
+2.16.840.1.101.3.4.2.14
+2.16.840.1.101.3.4.2.15
+2.16.840.1.101.3.4.2.16
+2.16.840.1.101.3.4.2.2
+2.16.840.1.101.3.4.2.3
+2.16.840.1.101.3.4.2.4
+2.16.840.1.101.3.4.2.5
+2.16.840.1.101.3.4.2.6
+2.16.840.1.101.3.4.2.7
+2.16.840.1.101.3.4.2.8
+2.16.840.1.101.3.4.2.9
+2.16.840.1.101.3.4.3
+2.16.840.1.101.3.4.3.1
+2.16.840.1.101.3.4.3.10
+2.16.840.1.101.3.4.3.11
+2.16.840.1.101.3.4.3.12
+2.16.840.1.101.3.4.3.13
+2.16.840.1.101.3.4.3.14
+2.16.840.1.101.3.4.3.15
+2.16.840.1.101.3.4.3.16
+2.16.840.1.101.3.4.3.2
+2.16.840.1.101.3.4.3.3
+2.16.840.1.101.3.4.3.4
+2.16.840.1.101.3.4.3.5
+2.16.840.1.101.3.4.3.6
+2.16.840.1.101.3.4.3.7
+2.16.840.1.101.3.4.3.8
+2.16.840.1.101.3.4.3.9
+acquireExistingProvider
+acquireProvider@
+alarm
+animation-list
+applyCompatConfiguration
+applyConfigCompatMainThread
+applyConfigurationToResources
+AsyncTask #4
+AsyncTask #5P
+attachp
+AutoLaunchSerialNumberNotFound
+Binder_1
+Binder_2
+Binder_6
+Checking update, please wait...
+Cipher.1.2.840.113549.1.12.1.1
+Cipher.1.2.840.113549.1.12.1.2
+Cipher.1.2.840.113549.1.12.1.3
+Cipher.1.2.840.113549.1.12.1.4
+Cipher.1.2.840.113549.1.12.1.5
+Cipher.1.2.840.113549.1.12.1.6
+Cipher.1.2.840.113549.1.5.10
+Cipher.1.2.840.113549.1.5.11
+Cipher.1.2.840.113549.1.5.3
+Cipher.1.2.840.113549.1.5.6
+Cipher.2.16.840.1.101.3.4.1.25
+Cipher.2.16.840.1.101.3.4.1.26
+Cipher.2.16.840.1.101.3.4.1.45
+Cipher.2.16.840.1.101.3.4.1.46
+Cipher.2.16.840.1.101.3.4.1.5
+Cipher.2.16.840.1.101.3.4.1.6
+Cipher.2.16.840.1.101.3.4.2
+Cipher.2.16.840.1.101.3.4.22
+Cipher.2.16.840.1.101.3.4.42
+Cipher.AES/CBC/PKCS5PADDING
+Cipher.AES/CBC/PKCS7PADDING
+Cipher.AES/ECB/PKCS5PADDING
+Cipher.AES/ECB/PKCS7PADDING
+Cipher.DESEDE/CBC/NOPADDING
+Cipher.DESEDE/CBC/PKCS5PADDING
+Cipher.DESEDE/CBC/PKCS7PADDING
+Cipher.DESEDE/CFB/NOPADDING
+Cipher.DESEDE/ECB/NOPADDING
+Cipher.DESEDE/ECB/PKCS5PADDING
+Cipher.DESEDE/ECB/PKCS7PADDING
+Cipher.DESEDE/OFB/NOPADDING
+Cipher.PBEWITHSHA1AND128BITRC4
+Cipher.PBEWITHSHA1AND40BITRC4
+Cipher.PBEWITHSHA1ANDDESEDE
+Cipher.PBEWITHSHAAND128BITRC4
+Cipher.PBEWITHSHAAND40BITRC4
+Cipher.PBEWITHSHAANDTWOFISH-CBC
+Cipher.RSA/ECB/PKCS1PADDING
+Cipher.RSA/NONE/PKCS1PADDING
+cleanUpPendingRemoveWindows0
+CLG5
+collectComponentCallbacks
+com.teslacoilsw.launcher
+completeRemoveProvider
+conf/static.properties
+Configuration file corrupted
+CouldNotInitializeServerTimeX
+createBaseContextForActivity
+createThumbnailBitmap
+currentActivityThread
+currentApplication8
+currentPackageName8
+currentProcessName
+debug_view_attributes
+deliverNewIntents
+deliverResults
+doGcIfNeeded
+dream2ltexx
+dumpGraphicsInfo
+dumpMemInfoTable8
+edmno
+ensureJitEnabled
+FFFFFF
+finishInstrumentation
+freeTextLayoutCachesIfNeeded
+getActivity8
+getApplication
+getApplicationThread
+getHandler 
+getInstrumentation
+getIntCoreSetting
+getIntentBeingBroadcastx0
+getPackageInfo
+getPackageInfoNoCheckH
+getPackageManager
+getProcessName@
+getProfileFilePath
+getSystemContext8
+getTopLevelResources
+handleBindApplication
+handleBindService
+handleCancelVisibleBehind
+handleConfigurationChanged
+handleCreateBackupAgent
+handleCreateService
+handleDestroyActivity
+handleDestroyBackupAgent
+handleDispatchPackageBroadcast
+handleDumpActivity
+handleDumpHeap8
+handleDumpProvider
+handleDumpService
+handleEnterAnimationComplete
+handleInstallProvider6
+handleLaunchActivity
+handleLowMemory8
+handleNewIntent
+handlePauseActivity
+handleProfilerControl
+handleReceiver8
+handleRelaunchActivity
+handleResumeActivity
+handleSendResult
+handleServiceArgs
+handleSetCoreSettings
+handleSleeping
+handleStopActivity
+handleStopService8
+handleTrimMemory8
+handleUnbindService
+handleUnstableProviderDiedx0
+handleWindowVisibility
+https://secure.square-enix.com/account/app/svc/activation1?sqexid=%_RegistrationIdentifier_%&birthday=%_AuthorizationCode_%&clinetInitialVector1=%_InitialVector_%&clientPublickey=%_PublicKey_%&lang=en-us(
+ImageButton
+images/background.png
+incProviderRefLocked
+installContentProviders
+installProvider
+installSystemApplicationInfo
+installSystemProvidersx0
+isProfiling8
+KeyAgreement.ECDH
+KeyFactory.1.2.840.10040.4.1
+KeyFactory.1.2.840.10045.2.1
+KeyFactory.1.2.840.113549.1.1.1
+KeyFactory.1.2.840.113549.1.1.7X
+KeyFactory.1.2.840.113549.1.3.1
+KeyFactory.DH
+KeyFactory.DSA
+KeyFactory.EC
+KeyFactory.RSA
+KeyGenerator.1.2.840.113549.2.7
+KeyGenerator.1.2.840.113549.2.8
+KeyGenerator.1.2.840.113549.2.9
+KeyGenerator.1.2.840.113549.3.4
+KeyGenerator.1.3.6.1.5.5.8.1.1
+KeyGenerator.1.3.6.1.5.5.8.1.2
+KeyPairGenerator.DH
+KeyPairGenerator.DSA
+KeyPairGenerator.EC
+KeyPairGenerator.RSA
+Launching view: 
+linearInterpolator8
+long_press_timeout
+MessageDigest.1.3.14.3.2.26
+MessageDigest.MD5
+MessageDigest.SHA
+MessageDigest.SHA1
+MessageDigest.SHA-1
+MessageDigest.SHA224
+MessageDigest.SHA-224
+MessageDigest.SHA256
+MessageDigest.SHA-256
+MessageDigest.SHA384
+MessageDigest.SHA-384
+MessageDigest.SHA512
+MessageDigest.SHA-512
+onNewActivityOptions
+org.bouncycastle.pkcs1.strict
+p B0
+p Cipher.1.2.840.113549.1.9.16.3.6
+p Cipher.PBEWITHSHAAND40BITRC2-CBC
+p E%
+p handleRequestAssistContextExtras
+p handleUnstableProviderDiedLocked
+p installProviderAuthoritiesLocked
+p KeyFactory.1.3.133.16.840.63.0.2
+p KeyGenerator.1.2.840.113549.2.10
+p KeyGenerator.1.2.840.113549.2.11
+p MessageDigest.1.2.840.113549.2.5
+P MP
+p registerOnActivityPausedListener0
+p res/layout/activity_digipass.xml
+p Signature.2.16.840.1.101.3.4.3.1
+p Signature.2.16.840.1.101.3.4.3.2
+p v>
+p You must enter a local password.
+p	dream2lte
+p	getLooperp
+p	H9
+p!Cipher.PBEWITHSHA1AND40BITRC2-CBC
+p!Cipher.PBEWITHSHAAND128BITRC2-CBC
+p!Cipher.PBEWITHSHAAND3KEYTRIPLEDES
+p!KeyGenerator.1.3.6.1.4.1.3029.1.2
+p!org.bouncycastle.pkcs1.not_strict
+p!PasswordCharactersNotAlphanumeric
+p!Signature.OID.1.2.840.10045.4.3.1X
+p!Signature.OID.1.2.840.10045.4.3.2
+p!Signature.OID.1.2.840.10045.4.3.3X
+p!Signature.OID.1.2.840.10045.4.3.4
+p!Signature.SHA224WITHRSAENCRYPTION
+p!Signature.SHA256WITHRSAENCRYPTION
+p!Signature.SHA384WITHRSAENCRYPTION
+p!Signature.SHA512WITHRSAENCRYPTION
+p"Cipher.1.3.6.1.4.1.22554.1.1.2.1.2
+p"Cipher.PBEWITHSHA1AND128BITRC2-CBC
+p"handleActivityConfigurationChanged
+p"OptionalApplicationUpdateAvailable
+p"Signature.OID.1.2.840.113549.1.1.4
+p"Signature.OID.1.2.840.113549.1.1.5
+p"splashscreenBackgroundColor=FFFFFF
+p"Token derivation is not supported.
+p"unregisterOnActivityPausedListener
+p#callCallActivityOnSaveInstanceState
+p#Cipher.1.3.6.1.4.1.22554.1.1.2.1.22p
+p#Cipher.1.3.6.1.4.1.22554.1.1.2.1.42
+p#handleTranslucentConversionComplete
+p#KeyGenerator.2.16.840.1.101.3.4.2.1
+P#pE
+p#Signature.OID.1.2.840.113549.1.1.11
+p#Signature.OID.1.2.840.113549.1.1.12
+p#Signature.OID.1.2.840.113549.1.1.13
+p#Signature.OID.1.2.840.113549.1.1.14
+p$Cipher.1.3.6.1.4.1.22554.1.2.1.2.1.2
+p$Cipher.PBEWITHSHAAND128BITAES-CBC-BC`E
+p$Cipher.PBEWITHSHAAND192BITAES-CBC-BC
+p$Cipher.PBEWITHSHAAND256BITAES-CBC-BC
+p$handleUpdatePackageCompatibilityInfo
+p$MessageDigest.2.16.840.1.101.3.4.2.1
+p$MessageDigest.2.16.840.1.101.3.4.2.2
+p$MessageDigest.2.16.840.1.101.3.4.2.3
+p$MessageDigest.2.16.840.1.101.3.4.2.4
+P$pE
+p$Signature.OID.2.16.840.1.101.3.4.3.1
+p$Signature.OID.2.16.840.1.101.3.4.3.2
+p%Cipher.1.3.6.1.4.1.22554.1.2.1.2.1.22
+p%Cipher.1.3.6.1.4.1.22554.1.2.1.2.1.42
+p%Cipher.PBEWITHSHA1AND128BITAES-CBC-BC
+p%Cipher.PBEWITHSHA1AND192BITAES-CBC-BC
+p%Cipher.PBEWITHSHA1AND256BITAES-CBC-BC
+p&Cipher.PBEWITHSHA-1AND128BITAES-CBC-BC
+p&Cipher.PBEWITHSHA-1AND192BITAES-CBC-BC
+p&Cipher.PBEWITHSHA-1AND256BITAES-CBC-BC
+p&Cipher.PBEWITHSHAAND2-KEYTRIPLEDES-CBC
+p&Cipher.PBEWITHSHAAND3-KEYTRIPLEDES-CBC
+p&handleOnBackgroundVisibleBehindChanged
+p(Cipher.PBEWITHSHA-256AND128BITAES-CBC-BC
+p(Cipher.PBEWITHSHA-256AND192BITAES-CBC-BC
+p(Cipher.PBEWITHSHA-256AND256BITAES-CBC-BC
+p)/data/data/com.square_enix_software_token
+p)/data/data/com.square_enix_software_token`E
+p)/data/misc/user/0/cacerts-added
+p)/data/misc/user/0/cacerts-removed`E
+p)AlgorithmParameters.1.2.840.10040.4.1
+p)AlgorithmParameters.1.2.840.113549.3.7
+p)AlgorithmParameters.1.3.14.3.2.27
+p)AlgorithmParameters.1.3.14.3.2.7
+p)AlgorithmParameters.1.3.6.1.4.1.3029.1.2
+p)AlgorithmParameters.2.16.840.1.101.3.4.2
+p)AlgorithmParameters.2.16.840.1.101.3.4.22
+p)AlgorithmParameters.2.16.840.1.101.3.4.42
+p)AlgorithmParameters.BLOWFISH
+p)AlgorithmParameters.DIFFIEHELLMAN
+p)AlgorithmParameters.PBEWITHSHA1ANDRC2
+p)AlgorithmParameters.PBEWITHSHA1ANDRC2-CBC
+p)AlgorithmParameters.PBEWITHSHAAND40BITRC4
+p)AlgorithmParameters.PBEWITHSHAANDRC2
+p)AlgorithmParameters.PBEWITHSHAANDRC4
+p)AlgorithmParameters.PBEWITHSHAANDTWOFISH
+p)AlgorithmParameters.PKCS12PBE
+p)Cipher.PBEWITHMD5AND128BITAES-CBC-OPENSSL
+p)Cipher.PBEWITHMD5AND192BITAES-CBC-OPENSSL
+p)Cipher.PBEWITHMD5AND256BITAES-CBC-OPENSSL
+p)KeyPairGenerator.1.2.840.10040.4.1
+p)KeyPairGenerator.1.2.840.10045.2.1
+p)KeyPairGenerator.1.2.840.113549.1.1.1
+p)KeyPairGenerator.1.2.840.113549.1.1.7
+p)KeyPairGenerator.1.2.840.113549.1.3.1
+p)KeyPairGenerator.1.3.133.16.840.63.0.2
+p)KeyPairGenerator.1.3.14.3.2.27
+p)KeyPairGenerator.DIFFIEHELLMAN
+P)pE
+p)SecretKeyFactory.1.2.840.113549.1.12.1.1
+p)SecretKeyFactory.1.2.840.113549.1.12.1.2
+p)SecretKeyFactory.1.2.840.113549.1.12.1.3
+p)SecretKeyFactory.1.2.840.113549.1.12.1.4
+p)SecretKeyFactory.1.2.840.113549.1.12.1.5
+p)SecretKeyFactory.1.2.840.113549.1.12.1.6
+p)SecretKeyFactory.1.2.840.113549.1.5.10
+p)SecretKeyFactory.1.2.840.113549.1.5.11
+p)SecretKeyFactory.1.2.840.113549.1.5.3
+p)SecretKeyFactory.1.2.840.113549.1.5.6
+p)SecretKeyFactory.1.3.14.3.2.26
+p)SecretKeyFactory.PBEWITHHMACSHA
+p)SecretKeyFactory.PBEWITHHMACSHA1
+p)SecretKeyFactory.PBEWITHMD5ANDDES
+p)SecretKeyFactory.PBEWITHMD5ANDDES-CBC
+p)SecretKeyFactory.PBEWITHMD5ANDRC2
+p)SecretKeyFactory.PBEWITHMD5ANDRC2-CBC
+p)SecretKeyFactory.PBEWITHSHA1ANDDES
+p)SecretKeyFactory.PBEWITHSHA1ANDDES-CBC
+p)SecretKeyFactory.PBEWITHSHA1ANDRC2
+p)SecretKeyFactory.PBEWITHSHA1ANDRC2-CBC
+p)SecretKeyFactory.PBEWITHSHAAND128BITRC4
+p)SecretKeyFactory.PBEWITHSHAAND40BITRC4
+p)SecretKeyFactory.PBEWITHSHAANDTWOFISH-CBC
+p)SecretKeyFactory.PBKDF2WITHHMACSHA1
+p*AlgorithmParameterGenerator.1.3.14.3.2.27
+p*AlgorithmParameterGenerator.DH
+p*AlgorithmParameterGenerator.DIFFIEHELLMAN
+p*AlgorithmParameterGenerator.DSA
+p*AlgorithmParameters.2.16.840.1.101.3.4.1.2
+p*AlgorithmParameters.2.16.840.1.101.3.4.1.6
+p*AlgorithmParameters.PBEWITHSHAAND128BITRC4
+p*org.bouncycastle.asn1.allow_unsafe_integer
+p*SecretKeyFactory.PBEWITHSHAAND40BITRC2-CBC
+p*SecretKeyFactory.PBKDF2WITHHMACSHA1AND8BIT
+p*SecretKeyFactory.PBKDF2WITHHMACSHA1ANDUTF8
+p,AlgorithmParameters.PBEWITHSHAANDDES2KEY-CBC
+p,AlgorithmParameters.PBEWITHSHAANDDES3KEY-CBC
+p,AlgorithmParameters.PBEWITHSHAANDTWOFISH-CBC(
+p,SecretKeyFactory.1.3.6.1.4.1.22554.1.1.2.1.2(
+p,Signature.1.3.14.3.2.26WITH1.2.840.10040.4.1
+p,Signature.1.3.14.3.2.26WITH1.2.840.10040.4.3
+p,Signature.1.3.14.3.2.26WITH1.2.840.10045.2.1(
+p./data/app/com.square_enix_software_token-1/lib
+p./data/app/com.square_enix_software_token-1/lib(
+p.AlgorithmParameters.PBEWITHSHAAND128BITRC2-CBC(
+p.AlgorithmParameters.PBEWITHSHAAND3KEYTRIPLEDES
+P.pE
+p.SecretKeyFactory.PBEWITHSHAAND128BITAES-CBC-BC
+p.SecretKeyFactory.PBEWITHSHAAND192BITAES-CBC-BC(
+p.SecretKeyFactory.PBEWITHSHAAND256BITAES-CBC-BC
+p/		
+p//data/data/com.square_enix_software_token/files
+p/AlgorithmParameters.1.3.6.1.4.1.22554.1.1.2.1.2
+p/AlgorithmParameters.PBEWITHSHAAND2-KEYTRIPLEDES
+p/AlgorithmParameters.PBEWITHSHAAND3-KEYTRIPLEDES
+p/SecretKeyFactory.PBEWITHSHA1AND128BITAES-CBC-BC
+p/SecretKeyFactory.PBEWITHSHA1AND192BITAES-CBC-BC
+p/SecretKeyFactory.PBEWITHSHA1AND256BITAES-CBC-BC
+p/Signature.1.3.14.3.2.26WITH1.2.840.113549.1.1.1
+p/Signature.1.3.14.3.2.26WITH1.2.840.113549.1.1.5
+p:Required only if your application provider sent it to you.(
+p:The network response does not include the activation data.
+p:The serial number has an invalid length (it should be 10).
+p?/data/data/com.square_enix_software_token/cache
+p?/data/data/com.square_enix_software_token/shared_prefs
+p@Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-G930K Build/NRD90M)
+p~/data/data/com.square_enix_software_token/shared_prefs/com.vasco.digipass.mobile.android.views.activities.DigipassActivity.xml
+p+AlgorithmParameters.1.2.840.113549.1.12.1.1
+p+AlgorithmParameters.1.2.840.113549.1.12.1.2
+p+AlgorithmParameters.1.2.840.113549.1.12.1.3
+p+AlgorithmParameters.1.2.840.113549.1.12.1.4(
+p+AlgorithmParameters.1.2.840.113549.1.12.1.5
+p+AlgorithmParameters.1.2.840.113549.1.12.1.6
+p+AlgorithmParameters.2.16.840.1.101.3.4.1.22
+p+AlgorithmParameters.2.16.840.1.101.3.4.1.26(
+p+AlgorithmParameters.2.16.840.1.101.3.4.1.42
+p+AlgorithmParameters.2.16.840.1.101.3.4.1.46
+p0AlgorithmParameters.1.3.6.1.4.1.22554.1.1.2.1.22
+p0AlgorithmParameters.1.3.6.1.4.1.22554.1.1.2.1.42
+p0SecretKeyFactory.PBEWITHSHA-1AND128BITAES-CBC-BC
+p0SecretKeyFactory.PBEWITHSHA-1AND192BITAES-CBC-BC
+p0SecretKeyFactory.PBEWITHSHA-1AND256BITAES-CBC-BC
+p1AlgorithmParameters.1.3.6.1.4.1.22554.1.2.1.2.1.2
+p1AlgorithmParameters.PBEWITHSHAAND128BITAES-CBC-BC
+p1AlgorithmParameters.PBEWITHSHAAND192BITAES-CBC-BC
+p1AlgorithmParameters.PBEWITHSHAAND256BITAES-CBC-BC
+p2/data/app/com.square_enix_software_token-1/lib/x86(
+p2AlgorithmParameters.1.3.6.1.4.1.22554.1.2.1.2.1.22
+p2AlgorithmParameters.1.3.6.1.4.1.22554.1.2.1.2.1.42
+p2AlgorithmParameters.PBEWITHSHA1AND128BITAES-CBC-BC
+p2AlgorithmParameters.PBEWITHSHA1AND192BITAES-CBC-BC
+p2AlgorithmParameters.PBEWITHSHA1AND256BITAES-CBC-BC
+p3/data/app/com.square_enix_software_token-1/base.apkHT
+p3AlgorithmParameters.PBEWITHSHA-1AND128BITAES-CBC-BC
+p3AlgorithmParameters.PBEWITHSHA-1AND192BITAES-CBC-BC
+p3AlgorithmParameters.PBEWITHSHA-1AND256BITAES-CBC-BC
+p3AlgorithmParameters.PBEWITHSHAAND2-KEYTRIPLEDES-CBC
+p3AlgorithmParameters.PBEWITHSHAAND3-KEYTRIPLEDES-CBC
+p3BiometricFingerprintRecognitionAuthenticationFailed
+p3res/drawable-mdpi-v4/progressbar_indeterminate1.png
+p3res/drawable-mdpi-v4/progressbar_indeterminate2.png
+p3res/drawable-mdpi-v4/progressbar_indeterminate3.png
+p3SecretKeyFactory.PBEWITHMD5AND128BITAES-CBC-OPENSSL
+p3SecretKeyFactory.PBEWITHMD5AND192BITAES-CBC-OPENSSL
+p3SecretKeyFactory.PBEWITHMD5AND256BITAES-CBC-OPENSSL
+p3xmlSigningErrorMessage=Configuration file corrupted
+p4AlgorithmParameters.PBEWITHSHA256AND128BITAES-CBC-BC
+p4AlgorithmParameters.PBEWITHSHA256AND192BITAES-CBC-BC
+p4AlgorithmParameters.PBEWITHSHA256AND256BITAES-CBC-BC
+p4An internal error occurred with code: %_ErrorCode_%.
+p4dream2ltexx-user 5.1.1 NRD90M 500200714 release-keys
+p4MultiDeviceActivationCryptoApplicationIndexIncorrect
+p4MultiDeviceInstanceActivationMessageLicenseIncorrect
+p4MultiDeviceLicenseActivationMessageSignatureNotValid
+p4res/drawable-mdpi-v4/scrollbar_handle_vertical.9.png
+p4Signature.1.2.840.113549.2.5WITH1.2.840.113549.1.1.1
+p5AlgorithmParameters.PBEWITHSHA-256AND128BITAES-CBC-BC
+p5AlgorithmParameters.PBEWITHSHA-256AND192BITAES-CBC-BC
+p5AlgorithmParameters.PBEWITHSHA-256AND256BITAES-CBC-BC
+p5MultiDeviceInstanceActivationMessageDeviceIdIncorrect
+p5MultiDeviceInstanceActivationMessageSignatureNotValid
+p5Signature.2.16.840.1.101.3.4.2.1WITH1.2.840.10045.2.1
+p5Signature.2.16.840.1.101.3.4.2.2WITH1.2.840.10045.2.1
+p5Signature.2.16.840.1.101.3.4.2.3WITH1.2.840.10045.2.1
+p5Signature.2.16.840.1.101.3.4.2.4WITH1.2.840.10045.2.1
+p5The activation response does not include a challenge.(
+p6res/drawable-mdpi-v4/scrollbar_handle_horizontal.9.png
+p6The maximal length for the challenge is %_MaxLength_%.
+p6The minimal length for the challenge is %_MinLength_%.
+p8An error occured during Root Detection with error code: (
+p8Signature.2.16.840.1.101.3.4.2.1WITH1.2.840.113549.1.1.1
+p8Signature.2.16.840.1.101.3.4.2.2WITH1.2.840.113549.1.1.1
+p8Signature.2.16.840.1.101.3.4.2.3WITH1.2.840.113549.1.1.1
+p8Signature.2.16.840.1.101.3.4.2.4WITH1.2.840.113549.1.1.1
+p8The application has been locked. It must be reactivated.
+p8This activation message cannot be used with this device.
+p9BiometricFingerprintRecognitionFallbackDescriptionMessage
+p9Signature.2.16.840.1.101.3.4.2.1WITH1.2.840.113549.1.1.11
+p9Signature.2.16.840.1.101.3.4.2.4WITH1.2.840.113549.1.1.11
+p9The confirmation password does not match to the password.
+package
+p-AlgorithmParameters.PBEWITHSHAAND40BITRC2-CBC(
+PasswordCharactersNotNumeric
+pbcom.square_enix_software_token/com.vasco.digipass.mobile.android.views.activities.DigipassActivity
+p'Cipher.PBEWITHSHA1AND2-KEYTRIPLEDES-CBC
+p'Cipher.PBEWITHSHA1AND3-KEYTRIPLEDES-CBC
+p'Cipher.PBEWITHSHA256AND128BITAES-CBC-BC
+p'Cipher.PBEWITHSHA256AND192BITAES-CBC-BC
+p'Cipher.PBEWITHSHA256AND256BITAES-CBC-BC
+pCPlease authenticate using face recognition to protect your DIGIPASS
+peekPackageInfo
+performDestroyActivity
+performNewIntents
+performPauseActivity(
+performRestartActivity
+performResumeActivity
+performStopActivity(
+performUserLeavingActivity
+pFsamsung/dream2ltexx/dream2lte:5.1.1/NRD90M/500200714:user/release-keys
+pHThis image is not a relevant image to finalize your DIGIPASS activation.
+pHYour device is jailbroken or rooted. The application cannot be executed.h
+pIThe crypto application used for the multi-device activation is not valid.
+pIThis message is not a relevant message to start your DIGIPASS activation.
+pJPlease authenticate using fingerprint recognition to protect your DIGIPASS
+pmaq:pending:com.square_enix_software_token/com.vasco.digipass.mobile.android.views.activities.DigipassActivity
+pMThe location service is turned off. Please check your settings to turn it on.
+pOcom.samsung.android.fingerprint.FingerprintManager$FingerprintClientSpecBuilder
+ppThis function requires Internet connectivity. You must connect to a Wi-Fi or cellular data network to access it.
+ProgressBar8
+p-SecretKeyFactory.1.3.6.1.4.1.22554.1.1.2.1.22
+pSYou need to be connected to the internet to continue. Please connect and try again.
+ptaq:native-pre-ime:com.square_enix_software_token/com.vasco.digipass.mobile.android.views.activities.DigipassActivity
+puaq:native-post-ime:com.square_enix_software_token/com.vasco.digipass.mobile.android.views.activities.DigipassActivity
+pVSQUARE ENIX Software Token Ver.1.6.3
+pVThe check for security updates have failed. Please make sure you have internet access.
+pXThe settings of your application have been modified. You must re-activate your DIGIPASS.
+RelativeLayout
+releaseProvider8
+requestRelaunchActivity
+res/layout/screen_simple.xml
+res/layout/splash_screen.xml
+resolveActivityInfo(
+ResultResponse
+samsungexynos8890
+SANS_SERIF-Bold.otf
+SANS_SERIF-Bold.ttf
+scheduleContextCleanup
+scheduleGcIdler8
+se.infra
+sendActivityResult8
+serialNumber=%_SerialNumber_%&derivationCode=%_DerivationCode_%&clientNonce=%_Nonce_%&clinetInitialVector2=%_InitialVector_%&deviceId=%_DeviceIdentifier_%&lang=en-us(
+Settings button
+SHA-512/224
+SHA-512/256
+Signal Catcher8
+Signature.1.2.840.10040.4.1
+Signature.1.2.840.10040.4.3
+Signature.1.2.840.10045.4.1
+Signature.1.2.840.10045.4.3.1
+Signature.1.2.840.10045.4.3.2
+Signature.1.2.840.10045.4.3.3
+Signature.1.2.840.10045.4.3.4
+Signature.1.2.840.113549.1.1.11
+Signature.1.2.840.113549.1.1.12
+Signature.1.2.840.113549.1.1.13
+Signature.1.2.840.113549.1.1.14X
+Signature.1.2.840.113549.1.1.4
+Signature.1.2.840.113549.1.1.5
+Signature.MD5WITHRSAENCRYPTION
+Signature.OID.1.3.14.3.2.29X
+Signature.SHA1WITHRSAENCRYPTION
+SM-G930K
+splashscreenBackgroundColorX
+splashscreenImage=welcome.png
+SQUARE ENIX CO., LTD. All Rights Reserved.
+SSLContext.DEFAULT
+SSLContext.SSL
+SSLContext.SSLV3
+SSLContext.TLS
+SSLContext.TLSV1.1
+SSLContext.TLSV1.2
+SSLContext.TLSV18
+startActivityNow`"
+StaticVectorIncorrectFormat
+StaticVectorIncorrectLength
+The local password is weak.
+The password must be numerical.
+This application requires access to the camera to perform this action. Please enable the camera permission in the Settings menu of your device.
+time_12_24
+TokenDerivationNotSupported
+universal8890
+unscheduleGcIdler
+welcome.png
+window
+1.2.840.113549.1.12.1.6
+1.2.840.113549.1.9.22.1
+AES/CBC8
+AES/SIC@
+default
+en-US
+p:com.vasco.digipass.mobile.android.core.DPMobileApplication
+p2/data/app/com.square_enix_software_token-1/lib/x86
+pCcom.vasco.digipass.mobile.android.views.activities.DigipassActivity
+pEThe local password is too short. The minimal length is %_MinLength_%.
+pH/data/data/com.square_enix_software_token/files/VDS_dfms4142
+pJThe validation of the password failed. Tries remaining: %_RemainingTries_%
+samsung
+AES/SIC8
+instance0fingerprintVersion
+instance0name
+p*/data/app/com.square_enix_software_token-1
+pVThe Square Enix ID, date of birth, and registration password you entered do not match.
+p3/data/app/com.square_enix_software_token-1/base.apk
+eula
+false
+instance0biometricUsed
+instance0initialized
+instance0pwdFrmt
+instance0rId
+instance0tds
+LATER
+AES/SIC
+```
+</details>
 
 #### logcat
 
