@@ -7,7 +7,11 @@ tl;dr: The Square Enix Software Token uses it's own proprietary method to genera
 It may be possible to reverse the process by which it generates OTP codes (like with the Steam OTP codes), but then we may as well use the app.
 
 Process for adding the software OTP:
-<add steps>
+https://square-enix-games.com/en_GB/seaccount/otp
+
+https://square-enix-games.com/en_GB/seaccount/otp/token.html
+
+https://support.eu.square-enix.com/faqarticle.php?kid=78777&id=612&la=2
 
 For the purposes of easy testing, I'm using Nox, so any device IDs or model names will be related to this.
     
@@ -15,7 +19,7 @@ Note: Square Enix will e-mail you a code to put into the app (this isn't one of 
 
 ## Notes:
 1. The token is stored in /data/data/com.square_enix_software_token/files/VDS_dfms4142
-1. The token always starts with "0004", and has a length of 1960 characters.
+1. The token always starts with "0004", and has a length of 1960 characters. I wonder if this could be a version number (4).
 1. The token is in uppercase hex.
     1. The token in this file changes each time the "Show One-Time Password" button is pressed.
     1. Deleting this token when the app is closed means that the registration process needs to be restarted from the EULA stage.
@@ -43,7 +47,7 @@ Below are a list of files in `/data/data/com.square_enix_software_token/` that a
 
 ### Fresh install:
 ```
-/lib/libQRCronto.so (new)
+/lib/libQRCronto.so (new) (/lib is symlinked to /data/app/com.square_enix_software_token-1/lib/x86, and the file isn't used)
 ```
 ### After launch:
 ```
@@ -1185,7 +1189,13 @@ nox_adb.exe -s 127.0.0.1:62001 shell
 
 ##  Next steps
 
-For the next part of the investigation, I'll try running the app in Android Studio (after setting the Debug flag to true by decompiling it with APK Easy Tool first). Steps for this are here: https://stackoverflow.com/questions/2409923/what-do-i-have-to-add-to-the-manifest-to-debug-an-android-application-on-an-actu
+#### Debug the app
+
+For the next part of the investigation, I've added debug flags to every line (hoping to catch something), but I'm unable to run the smali code on the android emulator. Not sure what I'm doing wrong, buit I think it needs to know what the main method/Module is, and I'm not sure.
+
+I've also tried running the app in Android Studio (after setting the Debug flag to true by decompiling it with APK Easy Tool first, and removing libQRCronto.so (which isn't used)). Steps for this are here: https://stackoverflow.com/questions/2409923/what-do-i-have-to-add-to-the-manifest-to-debug-an-android-application-on-an-actu
+libQRCronto.so
+
 
 If Android Studio doesn't work, then I'll try using Frida to trace function calls:
 https://frida.re/docs/android/
@@ -1194,12 +1204,17 @@ I may also try to use GHIDA again (though I couldn't understand assembly).
 
 It's been strongly recommended to look at the decompiled smali code instead of using a compiler to Java, because you have to fix Java classes and libraries yourself, and with the obfuscated code it becomes too much.
 
-Searching for libQRCronto.so you're able to find other apps using the same framework, so that could be interesting to compare against. Only one app still seems to be using this framework, the others (at least from the screenshots) appear to have moved to something else.
+<br>
+
+#### Check older versions
+
+Previous versions are available here: https://apkpure.com/square-enix-software-token/com.square_enix_software_token
+
+Searching for libQRCronto.so shows other apps using the same framework, so that could be interesting to compare against. Only one app still seems to be using this framework, the others (at least from the screenshots) appear to have moved to something else.
 
 https://play.google.com/store/apps/details?id=com.eTokenBCR
 
 It may also be useful to look for older versions of the app. The one in the example usage screenshots on the Square Enix website show a version back to 2013.
-<br>
 
 ## Links:
 
