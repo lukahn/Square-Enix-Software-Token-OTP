@@ -19,7 +19,8 @@ Note: Square Enix will e-mail you a code to put into the app (this isn't one of 
 
 ## Notes:
 1. The token is stored in /data/data/com.square_enix_software_token/files/VDS_dfms4142
-1. The token always starts with "0004", and has a length of 1960 characters. I wonder if this could be a version number (4).
+1. The token always starts with "0004", and has a length of 1960 characters.
+    1. The 0004 repreesents the version number. Older versions start with 0001, and have 1586 characters. Loading an old version of this file in the new app converts it to the 0004 version above.
 1. The token is in uppercase hex.
     1. The token in this file changes each time the "Show One-Time Password" button is pressed.
     1. Deleting this token when the app is closed means that the registration process needs to be restarted from the EULA stage.
@@ -250,6 +251,43 @@ Connection: keep-alive
 ```
 
 Todo: <add guide, including installing the CA cert> (https://stackoverflow.com/a/51485753)
+
+
+### Synchronise
+There's an option in the app to Synchronise the time.
+
+#### Request (RAW):
+```
+GET /account/app/svc/synchronization HTTP/1.1
+User-Agent: Dalvik/1.2.3 (Linux; U; Android 1.2.3; SM-G123A Build/ABC12D)
+Host: secure.square-enix.com
+Connection: Keep-Alive
+Accept-Encoding: gzip
+```
+
+
+#### Response (RAW):
+```
+HTTP/1.1 200 OK
+Date: <redacted>
+Server: Apache
+Strict-Transport-Security: max-age=600; includeSubDomains
+X-XSS-Protection: 1; mode=block
+X-Frame-Options: SAMEORIGIN
+Expires: Sat, 06 May 1995 12:00:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate
+Cache-Control: post-check=0, pre-check=0
+Pragma: no-cache
+Content-Type: text/html;charset=UTF-8
+Content-Length: 78
+Set-Cookie: cis_sessid=0123456789abcdef0123456789abcdef0123456789abcdef01234567; Path=/; Secure; HttpOnly; SameSite=None
+P3P: CP='UNI CUR OUR'
+Keep-Alive: timeout=3, max=100
+Connection: keep-alive
+
+<?xml version="1.0" encoding="UTF-8"?> 
+<DP4Mobile serverTime="1600000000" />
+```
 
 <br>
 
@@ -974,7 +1012,7 @@ p:The network response does not include the activation data.
 p:The serial number has an invalid length (it should be 10).
 p?/data/data/com.square_enix_software_token/cache
 p?/data/data/com.square_enix_software_token/shared_prefs
-p@Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-G930K Build/NRD90M)
+p@Dalvik/1.2.3 (Linux; U; Android 1.2.3; SM-G123A Build/ABC12D)
 p~/data/data/com.square_enix_software_token/shared_prefs/com.vasco.digipass.mobile.android.views.activities.DigipassActivity.xml
 p+AlgorithmParameters.1.2.840.113549.1.12.1.1
 p+AlgorithmParameters.1.2.840.113549.1.12.1.2
@@ -1019,7 +1057,7 @@ p4AlgorithmParameters.PBEWITHSHA256AND128BITAES-CBC-BC
 p4AlgorithmParameters.PBEWITHSHA256AND192BITAES-CBC-BC
 p4AlgorithmParameters.PBEWITHSHA256AND256BITAES-CBC-BC
 p4An internal error occurred with code: %_ErrorCode_%.
-p4dream2ltexx-user 5.1.1 NRD90M 500200714 release-keys
+p4dream2ltexx-user 1.2.3 ABC12D 500000000 release-keys
 p4MultiDeviceActivationCryptoApplicationIndexIncorrect
 p4MultiDeviceInstanceActivationMessageLicenseIncorrect
 p4MultiDeviceLicenseActivationMessageSignatureNotValid
@@ -1067,7 +1105,7 @@ performRestartActivity
 performResumeActivity
 performStopActivity(
 performUserLeavingActivity
-pFsamsung/dream2ltexx/dream2lte:5.1.1/NRD90M/500200714:user/release-keys
+pFsamsung/dream2ltexx/dream2lte:1.2.3/ABC12D/500000000:user/release-keys
 pHThis image is not a relevant image to finalize your DIGIPASS activation.
 pHYour device is jailbroken or rooted. The application cannot be executed.h
 pIThe crypto application used for the multi-device activation is not valid.
@@ -1120,7 +1158,7 @@ Signature.1.2.840.113549.1.1.5
 Signature.MD5WITHRSAENCRYPTION
 Signature.OID.1.3.14.3.2.29X
 Signature.SHA1WITHRSAENCRYPTION
-SM-G930K
+SM-G123A
 splashscreenBackgroundColorX
 splashscreenImage=welcome.png
 SQUARE ENIX CO., LTD. All Rights Reserved.
@@ -1214,7 +1252,9 @@ Searching for libQRCronto.so shows other apps using the same framework, so that 
 
 https://play.google.com/store/apps/details?id=com.eTokenBCR
 
-It may also be useful to look for older versions of the app. The one in the example usage screenshots on the Square Enix website show a version back to 2013.
+It may also be useful to look for older versions of the app. The one in the example usage screenshots on the Square Enix website show a version back to 2013 (see: https://cache.secure.square-enix.com/account/content/images/gb/otp/manual_serial.png?ver=09202127021722)
+
+Note: While is says Software Token n version 4.0.7 on the screenshot, the latets version is 1.6.3. On The latest version though, it shows a different field (System Version) as 4.17.1.
 
 ## Links:
 
