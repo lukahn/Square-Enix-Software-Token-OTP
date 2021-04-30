@@ -1,4 +1,12 @@
+# Note, as of 2021-04-27, Square now officially supports software authenticators!
+https://na.finalfantasyxiv.com/lodestone/topics/detail/71188ef5daa1405a631a2bc2d79d54b08b69508a
+
+(see https://square-enix-games.com/en_US/seaccount/otp/authenticator.html for details)
+
+I may continue to work on this project as a hobby, but my main goal of getting it working with other password managers is now possible.
+
 # Square-Enix-Software-Token-OTP
+
 Findings when looking into the Square Enix Software Token: https://play.google.com/store/apps/details?id=com.square_enix_software_token
 
 Ultimately, it's my goal to find out how the OTP codes are being generated, and then writing that functionality into BitWarden, similar to Steam (https://bitwarden.com/help/article/authenticator-keys/ / https://github.com/bitwarden/mobile/blob/master/src/Core/Services/TotpService.cs). As with the Steam service, I'm not too interested in how the key is generated, only where to find it and how to use it.
