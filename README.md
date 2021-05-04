@@ -1250,11 +1250,33 @@ I may also try to use GHIDA again (though I couldn't understand assembly).
 
 It's been strongly recommended to look at the decompiled smali code instead of using a compiler to Java, because you have to fix Java classes and libraries yourself, and with the obfuscated code it becomes too much.
 
+Useful links for Android debugging:
+
+Note: I wasn't able to get anything meaningful done using smali. I found that using ByteCode Viewer to see a more human readable format, and searcing for the strings I could find (mainly error strings) helped me find which libraries were in use. I then enabled debugging in the Android Manifest file, set Android Studio to debug on Exceptions, then stepped through the variables for anything that looked useful. Understandably, I didn't get far, but here are some links that helped.
+
+https://www.netspi.com/blog/technical/mobile-application-penetration-testing/attacking-android-applications-with-debuggers/#4 - Enabling debugging in the Android manifest file
+
+https://mobile-security.gitbook.io/mobile-security-testing-guide/android-testing-guide/0x05c-reverse-engineering-and-tampering - A guide on the whole decompiling process
+
+https://samsclass.info/128/proj/p9-decom.htm - A way of injecting smali code to debug (without the source code, you can only debug in andropid Studio based on Exceptions. This alows you to add them in).
+
+https://www.freecodecamp.org/news/how-time-based-one-time-passwords-work-and-why-you-should-use-them-in-your-app-fdd2b9ed43c3/ - How OTP codes are generated
+
+https://github.com/MissToxia/auto-key-presser - Auto key presser. I used this to set breakpoints in every line of smali code (in combination with https://developer.android.com/studio/intro/keyboard-shortcuts), before realising that I couldn't run/build the smali code. It is possible to set breakpoints everywhere in Java (https://stackoverflow.com/questions/15027323/is-there-any-way-to-set-breakpoints-on-all-methods-of-a-class), but just not in smali (as it requires a plugin and specific version of Android Studio (3) (see https://www.programmersought.com/article/30895406603/) for details).
+
+https://medium.com/@ghxst.dev/static-analysis-and-debugging-on-android-using-smalidea-jdwp-and-adb-b073e6b9ae48 - How to use the smali plugin
+
+https://malacupa.com/2018/11/11/debug-decompiled-smali-code-in-android-studio-3.2.html - How to connect a debugger
+
+https://crosp.net/blog/software-development/mobile/android/android-reverse-engineering-debugging-smali-using-smalidea/ - More smali debugging
+
 <br>
 
 #### Check older versions
 
 Previous versions are available here: https://apkpure.com/square-enix-software-token/com.square_enix_software_token
+
+With dates of their release here: https://www.apkmonk.com/app/com.square_enix_software_token/#previous
 
 Searching for libQRCronto.so shows other apps using the same framework, so that could be interesting to compare against. Only one app still seems to be using this framework, the others (at least from the screenshots) appear to have moved to something else.
 
