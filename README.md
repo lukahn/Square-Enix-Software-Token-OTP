@@ -1,9 +1,15 @@
+# Note, as of 2023-11, Square now no longer use the app for new registrations.
+"* As of November 2023, new registration of a Software Token has ended. Please use a Security Token or a Software Authenticator (Google Authenticator, Microsoft Authenticator, etc.)."
+
 # Note, as of 2021-04-27, Square now officially supports software authenticators!
 https://na.finalfantasyxiv.com/lodestone/topics/detail/71188ef5daa1405a631a2bc2d79d54b08b69508a
 
 (see https://square-enix-games.com/en_US/seaccount/otp/authenticator.html for details)
 
 I may continue to work on this project as a hobby, but my main goal of getting it working with other password managers is now possible.
+
+# Completed decompilation
+Five years later, I thought I'd see if AI could sort this out. Thanks to the decompilation to smalli, filesystem dumps, network captures, and memory dumps, it was able to correctly decrypt the VDS_dfms4142 file. What's inside isn't as exciting as I'd hoped, but it's interesting all the same. Results can be found in the decompilation folder.
 
 # Square-Enix-Software-Token-OTP
 
